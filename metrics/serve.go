@@ -89,6 +89,7 @@ type Config struct {
 	SpikeMultiplier     float64
 	SeriesOperationMode opMode
 	ConstLabels         []string
+	MetricNamePrefix    string
 }
 
 func NewConfigFromFlags(flagReg func(name, help string) *kingpin.FlagClause) *Config {
@@ -140,6 +141,7 @@ func NewConfigFromFlags(flagReg func(name, help string) *kingpin.FlagClause) *Co
 
 	flagReg("series-operation-mode", "Mode of operation, so optional advanced behaviours on top of --value-interval, --series-interval and --metric-interval.").Default(disabledOpMode).
 		EnumVar(&cfg.SeriesOperationMode, disabledOpMode, gradualChangeOpMode, doubleHalveOpMode, spikeOpMode)
+	flagReg("metric-name-prefix", "Prefix used for all metric names").Default("avalanche").StringVar(&cfg.MetricNamePrefix)
 	return cfg
 }
 
@@ -216,7 +218,7 @@ func (c *Collector) recreateMetrics(unsafeGetState readOnlyStateFn) {
 	defer c.mu.Unlock()
 	s := unsafeGetState()
 	for id := range c.gauges {
-		mName := fmt.Sprintf("avalanche_gauge_metric_%s_%v_%v", strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
+		mName := fmt.Sprintf("%s_gauge_metric_%s_%v_%v", c.cfg.MetricNamePrefix, strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
 		gauge := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{Name: mName, Help: help(mName)},
 			append([]string{"series_id", "cycle_id"}, c.labelKeys...),
@@ -224,7 +226,7 @@ func (c *Collector) recreateMetrics(unsafeGetState readOnlyStateFn) {
 		c.gauges[id] = gauge
 	}
 	for id := range c.counters {
-		mName := fmt.Sprintf("avalanche_counter_metric_%s_%v_%v_total", strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
+		mName := fmt.Sprintf("%s_counter_metric_%s_%v_%v_total", c.cfg.MetricNamePrefix, strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
 		counter := prometheus.NewCounterVec(
 			prometheus.CounterOpts{Name: mName, Help: help(mName)},
 			append([]string{"series_id", "cycle_id"}, c.labelKeys...),
@@ -237,7 +239,7 @@ func (c *Collector) recreateMetrics(unsafeGetState readOnlyStateFn) {
 		bkts[i] = 0.0001 * math.Pow10(i)
 	}
 	for id := range c.histograms {
-		mName := fmt.Sprintf("avalanche_histogram_metric_%s_%v_%v", strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
+		mName := fmt.Sprintf("%s_histogram_metric_%s_%v_%v", c.cfg.MetricNamePrefix, strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
 		histogram := prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{Name: mName, Help: help(mName), Buckets: bkts},
 			append([]string{"series_id", "cycle_id"}, c.labelKeys...),
@@ -246,7 +248,7 @@ func (c *Collector) recreateMetrics(unsafeGetState readOnlyStateFn) {
 	}
 
 	for id := range c.nativeHistograms {
-		mName := fmt.Sprintf("avalanche_native_histogram_metric_%s_%v_%v", strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
+		mName := fmt.Sprintf("%s_native_histogram_metric_%s_%v_%v", c.cfg.MetricNamePrefix, strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
 		histogram := prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{Name: mName, Help: help(mName), NativeHistogramBucketFactor: 1.1},
 			append([]string{"series_id", "cycle_id"}, c.labelKeys...),
@@ -267,7 +269,7 @@ func (c *Collector) recreateMetrics(unsafeGetState readOnlyStateFn) {
 		}
 	}
 	for id := range c.summaries {
-		mName := fmt.Sprintf("avalanche_summary_metric_%s_%v_%v", strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
+		mName := fmt.Sprintf("%s_summary_metric_%s_%v_%v", c.cfg.MetricNamePrefix, strings.Repeat("m", c.cfg.MetricLength), s.metricCycle, id)
 		summary := prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{Name: mName, Help: help(mName), Objectives: objectives},
 			append([]string{"series_id", "cycle_id"}, c.labelKeys...),
